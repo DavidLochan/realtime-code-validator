@@ -12,10 +12,10 @@ jobs:
   deploy-frontend:
     runs-on: ubuntu-latest
 
-    env:
-      AWS_REGION: ${{ secrets.AWS_REGION }}
-      S3_BUCKET: ${{ secrets.S3_BUCKET }}
-      CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
+    # 👇 All `run:` commands happen inside the frontend folder
+    defaults:
+      run:
+        working-directory: frontend
 
     steps:
       - name: Checkout code
@@ -27,12 +27,10 @@ jobs:
           node-version: 20
 
       - name: Install dependencies
-        # If this ever fails because of lockfile issues, switch to: npm install
         run: npm ci
 
       - name: Run frontend tests
-        # Uses "test" script from frontend/package.json (react-scripts test --watchAll=false)
-        run: npm test
+        run: npm test -- --watchAll=false
 
       - name: Build frontend
         run: npm run build
@@ -45,10 +43,9 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
 
       - name: Sync build to S3
-        run: aws s3 sync dist s3://$S3_BUCKET --delete
+        run: aws s3 sync dist s3://${{ secrets.S3_BUCKET }} --delete
 
       - name: Invalidate CloudFront cache
-        run: |
-          aws cloudfront create-invalidation \
-            --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
-            --paths "/*"
+        run: aws cloudfront create-invalidation \
+          --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} \
+          --paths "/*"
