@@ -2,17 +2,16 @@ name: Deploy frontend to S3 + CloudFront
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
     paths:
       - "frontend/**"
       - ".github/workflows/deploy-frontend.yml"
-  workflow_dispatch:
 
 jobs:
   deploy-frontend:
     runs-on: ubuntu-latest
 
-    # 👇 All `run:` commands happen inside the frontend folder
+    # All "run" commands happen inside the frontend folder
     defaults:
       run:
         working-directory: frontend
@@ -30,7 +29,7 @@ jobs:
         run: npm ci
 
       - name: Run frontend tests
-        run: npm test -- --watchAll=false
+        run: npm test
 
       - name: Build frontend
         run: npm run build
@@ -45,5 +44,5 @@ jobs:
       - name: Sync build to S3
         run: aws s3 sync dist s3://${{ secrets.S3_BUCKET }} --delete
 
-     - name: Invalidate CloudFront cache
+      - name: Invalidate CloudFront cache
         run: aws cloudfront create-invalidation --distribution-id ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }} --paths "/*"
