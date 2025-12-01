@@ -1,0 +1,222 @@
+# service: realtime-code-validator-demo
+
+# frameworkVersion: "3"
+
+# provider:
+#   name: aws
+#   runtime: nodejs18.x
+#   region: us-east-1
+#   stage: dev
+
+#   environment:
+#     CONNECTIONS_TABLE: ${self:service}-connections-${opt:stage, self:provider.stage}
+#     USERS_TABLE: ${self:service}-users-${opt:stage, self:provider.stage}
+    
+
+#   httpApi:
+#     cors:
+#       allowedOrigins:
+#         - "*"
+#       allowedHeaders:
+#         - "*"
+#       allowedMethods:
+#         - "*"
+
+#   iamRoleStatements:
+#     # allow Lambdas to read/write the connections & users tables
+#     - Effect: Allow
+#       Action:
+#         - dynamodb:PutItem
+#         - dynamodb:DeleteItem
+#         - dynamodb:GetItem
+#         - dynamodb:Query
+#       Resource:
+#         - arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/${self:service}-connections-${opt:stage, self:provider.stage}
+#         - arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/${self:service}-users-${opt:stage, self:provider.stage}
+
+#     # allow validate Lambda to send WebSocket messages back
+#     - Effect: Allow
+#       Action:
+#         - execute-api:ManageConnections
+#       Resource:
+#         - arn:aws:execute-api:${self:provider.region}:${aws:accountId}:*/*/@connections/*
+
+# functions:
+#   connect:
+#     handler: handlers/connect.handler
+#     events:
+#       - websocket:
+#           route: $connect
+
+#   disconnect:
+#     handler: handlers/disconnect.handler
+#     events:
+#       - websocket:
+#           route: $disconnect
+
+#   validate:
+#     handler: handlers/validate.handler
+#     memorySize: 1024
+#     timeout: 30
+#     events:
+#       - websocket:
+#           route: validate
+
+#   signup:
+#     handler: handlers/signup.handler
+#     events:
+#       - httpApi:
+#           path: /auth/signup
+#           method: post
+
+#   login:
+#     handler: handlers/login.handler
+#     events:
+#       - httpApi:
+#           path: /auth/login
+#           method: post
+
+# resources:
+#   Resources:
+#     ConnectionsTable:
+#       Type: AWS::DynamoDB::Table
+#       Properties:
+#         TableName: ${self:provider.environment.CONNECTIONS_TABLE}
+#         AttributeDefinitions:
+#           - AttributeName: connectionId
+#             AttributeType: S
+#         KeySchema:
+#           - AttributeName: connectionId
+#             KeyType: HASH
+#         BillingMode: PAY_PER_REQUEST
+
+#     UsersTable:
+#       Type: AWS::DynamoDB::Table
+#       Properties:
+#         TableName: ${self:provider.environment.USERS_TABLE}
+#         AttributeDefinitions:
+#           - AttributeName: email
+#             AttributeType: S
+#         KeySchema:
+#           - AttributeName: email
+#             KeyType: HASH
+#         BillingMode: PAY_PER_REQUEST
+
+service: realtime-code-validator-demo
+
+frameworkVersion: "3"
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: us-east-1
+  stage: dev
+
+  environment:
+    CONNECTIONS_TABLE: ${self:service}-connections-${opt:stage, self:provider.stage}
+    USERS_TABLE: ${self:service}-users-${opt:stage, self:provider.stage}
+    WEBSOCKET_ENDPOINT: ${cf:${self:service}-${self:provider.stage}.ServiceEndpointWebsocket}
+    PYTHON_VALIDATOR_FN: ${self:service}-${self:provider.stage}-pythonValidate
+
+  httpApi:
+    cors:
+      allowedOrigins:
+        - "*"
+      allowedHeaders:
+        - "*"
+      allowedMethods:
+        - "*"
+
+  iamRoleStatements:
+    # allow Lambdas to read/write the connections & users tables
+    - Effect: Allow
+      Action:
+        - dynamodb:PutItem
+        - dynamodb:DeleteItem
+        - dynamodb:GetItem
+        - dynamodb:Query
+      Resource:
+        - arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/${self:service}-connections-${opt:stage, self:provider.stage}
+        - arn:aws:dynamodb:${self:provider.region}:${aws:accountId}:table/${self:service}-users-${opt:stage, self:provider.stage}
+
+    # allow WebSocket messages from Lambda
+    - Effect: Allow
+      Action:
+        - execute-api:ManageConnections
+      Resource:
+        - arn:aws:execute-api:${self:provider.region}:${aws:accountId}:*/*/@connections/*
+
+    # ✅ allow Node validate Lambda to invoke Python validator Lambda
+    - Effect: Allow
+      Action:
+        - lambda:InvokeFunction
+      Resource:
+        - arn:aws:lambda:${self:provider.region}:${aws:accountId}:function:${self:service}-${self:provider.stage}-pythonValidate
+
+functions:
+  connect:
+    handler: handlers/connect.handler
+    events:
+      - websocket:
+          route: $connect
+
+  disconnect:
+    handler: handlers/disconnect.handler
+    events:
+      - websocket:
+          route: $disconnect
+
+  validate:
+    handler: handlers/validate.handler
+    memorySize: 1024
+    timeout: 30
+    events:
+      - websocket:
+          route: validate
+
+  signup:
+    handler: handlers/signup.handler
+    events:
+      - httpApi:
+          path: /auth/signup
+          method: post
+
+  login:
+    handler: handlers/login.handler
+    events:
+      - httpApi:
+          path: /auth/login
+          method: post
+
+  # ✅ Python Syntax Validator Lambda (NO EVENTS)
+  pythonValidate:
+    runtime: python3.11
+    handler: python_validator.lambda_handler
+    memorySize: 128
+    timeout: 10
+
+resources:
+  Resources:
+    ConnectionsTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.CONNECTIONS_TABLE}
+        AttributeDefinitions:
+          - AttributeName: connectionId
+            AttributeType: S
+        KeySchema:
+          - AttributeName: connectionId
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST
+
+    UsersTable:
+      Type: AWS::DynamoDB::Table
+      Properties:
+        TableName: ${self:provider.environment.USERS_TABLE}
+        AttributeDefinitions:
+          - AttributeName: email
+            AttributeType: S
+        KeySchema:
+          - AttributeName: email
+            KeyType: HASH
+        BillingMode: PAY_PER_REQUEST

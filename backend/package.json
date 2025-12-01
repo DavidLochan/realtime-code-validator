@@ -1,0 +1,16 @@
+{
+    "name": "realtime-code-validator-backend",
+    "version": "1.0.0",
+    "description": "Serverless backend for real-time code validation",
+    "scripts": {
+        "deploy": "serverless deploy --stage dev",
+        "remove": "serverless remove --stage dev"
+    },
+    "dependencies": {
+        "acorn": "^8.15.0",
+        "aws-sdk": "^2.1400.0"
+    },
+    "devDependencies": {
+        "serverless": "3.34.0"
+    }
+}

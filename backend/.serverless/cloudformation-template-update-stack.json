@@ -1,0 +1,1074 @@
+{
+  "AWSTemplateFormatVersion": "2010-09-09",
+  "Description": "The AWS CloudFormation template for this Serverless application",
+  "Resources": {
+    "ServerlessDeploymentBucket": {
+      "Type": "AWS::S3::Bucket",
+      "Properties": {
+        "BucketEncryption": {
+          "ServerSideEncryptionConfiguration": [
+            {
+              "ServerSideEncryptionByDefault": {
+                "SSEAlgorithm": "AES256"
+              }
+            }
+          ]
+        }
+      }
+    },
+    "ServerlessDeploymentBucketPolicy": {
+      "Type": "AWS::S3::BucketPolicy",
+      "Properties": {
+        "Bucket": {
+          "Ref": "ServerlessDeploymentBucket"
+        },
+        "PolicyDocument": {
+          "Statement": [
+            {
+              "Action": "s3:*",
+              "Effect": "Deny",
+              "Principal": "*",
+              "Resource": [
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":s3:::",
+                      {
+                        "Ref": "ServerlessDeploymentBucket"
+                      },
+                      "/*"
+                    ]
+                  ]
+                },
+                {
+                  "Fn::Join": [
+                    "",
+                    [
+                      "arn:",
+                      {
+                        "Ref": "AWS::Partition"
+                      },
+                      ":s3:::",
+                      {
+                        "Ref": "ServerlessDeploymentBucket"
+                      }
+                    ]
+                  ]
+                }
+              ],
+              "Condition": {
+                "Bool": {
+                  "aws:SecureTransport": false
+                }
+              }
+            }
+          ]
+        }
+      }
+    },
+    "ConnectLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/realtime-code-validator-demo-dev-connect"
+      }
+    },
+    "DisconnectLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/realtime-code-validator-demo-dev-disconnect"
+      }
+    },
+    "ValidateLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/realtime-code-validator-demo-dev-validate"
+      }
+    },
+    "SignupLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/realtime-code-validator-demo-dev-signup"
+      }
+    },
+    "LoginLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/realtime-code-validator-demo-dev-login"
+      }
+    },
+    "PythonValidateLogGroup": {
+      "Type": "AWS::Logs::LogGroup",
+      "Properties": {
+        "LogGroupName": "/aws/lambda/realtime-code-validator-demo-dev-pythonValidate"
+      }
+    },
+    "IamRoleLambdaExecution": {
+      "Type": "AWS::IAM::Role",
+      "Properties": {
+        "AssumeRolePolicyDocument": {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": [
+                  "lambda.amazonaws.com"
+                ]
+              },
+              "Action": [
+                "sts:AssumeRole"
+              ]
+            }
+          ]
+        },
+        "Policies": [
+          {
+            "PolicyName": {
+              "Fn::Join": [
+                "-",
+                [
+                  "realtime-code-validator-demo",
+                  "dev",
+                  "lambda"
+                ]
+              ]
+            },
+            "PolicyDocument": {
+              "Version": "2012-10-17",
+              "Statement": [
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:CreateLogStream",
+                    "logs:CreateLogGroup",
+                    "logs:TagResource"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/realtime-code-validator-demo-dev*:*"
+                    }
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "logs:PutLogEvents"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::Sub": "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/realtime-code-validator-demo-dev*:*:*"
+                    }
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "dynamodb:PutItem",
+                    "dynamodb:DeleteItem",
+                    "dynamodb:GetItem",
+                    "dynamodb:Query"
+                  ],
+                  "Resource": [
+                    "arn:aws:dynamodb:us-east-1:266676570952:table/realtime-code-validator-demo-connections-dev",
+                    "arn:aws:dynamodb:us-east-1:266676570952:table/realtime-code-validator-demo-users-dev"
+                  ]
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "execute-api:ManageConnections"
+                  ],
+                  "Resource": "arn:aws:execute-api:us-east-1:266676570952:*/*/@connections/*"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "lambda:InvokeFunction"
+                  ],
+                  "Resource": "arn:aws:lambda:us-east-1:266676570952:function:realtime-code-validator-demo-dev-pythonValidate"
+                },
+                {
+                  "Effect": "Allow",
+                  "Action": [
+                    "execute-api:ManageConnections"
+                  ],
+                  "Resource": [
+                    {
+                      "Fn::Sub": "arn:${AWS::Partition}:execute-api:*:*:*/@connections/*"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        ],
+        "Path": "/",
+        "RoleName": {
+          "Fn::Join": [
+            "-",
+            [
+              "realtime-code-validator-demo",
+              "dev",
+              {
+                "Ref": "AWS::Region"
+              },
+              "lambdaRole"
+            ]
+          ]
+        }
+      }
+    },
+    "ConnectLambdaFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Ref": "ServerlessDeploymentBucket"
+          },
+          "S3Key": "serverless/realtime-code-validator-demo/dev/1764529988968-2025-11-30T19:13:08.968Z/realtime-code-validator-demo.zip"
+        },
+        "Handler": "handlers/connect.handler",
+        "Runtime": "nodejs18.x",
+        "FunctionName": "realtime-code-validator-demo-dev-connect",
+        "MemorySize": 1024,
+        "Timeout": 6,
+        "Environment": {
+          "Variables": {
+            "CONNECTIONS_TABLE": "realtime-code-validator-demo-connections-dev",
+            "USERS_TABLE": "realtime-code-validator-demo-users-dev",
+            "WEBSOCKET_ENDPOINT": "wss://k2p23yxaw1.execute-api.us-east-1.amazonaws.com/dev",
+            "PYTHON_VALIDATOR_FN": "realtime-code-validator-demo-dev-pythonValidate"
+          }
+        },
+        "Role": {
+          "Fn::GetAtt": [
+            "IamRoleLambdaExecution",
+            "Arn"
+          ]
+        }
+      },
+      "DependsOn": [
+        "ConnectLogGroup"
+      ]
+    },
+    "DisconnectLambdaFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Ref": "ServerlessDeploymentBucket"
+          },
+          "S3Key": "serverless/realtime-code-validator-demo/dev/1764529988968-2025-11-30T19:13:08.968Z/realtime-code-validator-demo.zip"
+        },
+        "Handler": "handlers/disconnect.handler",
+        "Runtime": "nodejs18.x",
+        "FunctionName": "realtime-code-validator-demo-dev-disconnect",
+        "MemorySize": 1024,
+        "Timeout": 6,
+        "Environment": {
+          "Variables": {
+            "CONNECTIONS_TABLE": "realtime-code-validator-demo-connections-dev",
+            "USERS_TABLE": "realtime-code-validator-demo-users-dev",
+            "WEBSOCKET_ENDPOINT": "wss://k2p23yxaw1.execute-api.us-east-1.amazonaws.com/dev",
+            "PYTHON_VALIDATOR_FN": "realtime-code-validator-demo-dev-pythonValidate"
+          }
+        },
+        "Role": {
+          "Fn::GetAtt": [
+            "IamRoleLambdaExecution",
+            "Arn"
+          ]
+        }
+      },
+      "DependsOn": [
+        "DisconnectLogGroup"
+      ]
+    },
+    "ValidateLambdaFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Ref": "ServerlessDeploymentBucket"
+          },
+          "S3Key": "serverless/realtime-code-validator-demo/dev/1764529988968-2025-11-30T19:13:08.968Z/realtime-code-validator-demo.zip"
+        },
+        "Handler": "handlers/validate.handler",
+        "Runtime": "nodejs18.x",
+        "FunctionName": "realtime-code-validator-demo-dev-validate",
+        "MemorySize": 1024,
+        "Timeout": 30,
+        "Environment": {
+          "Variables": {
+            "CONNECTIONS_TABLE": "realtime-code-validator-demo-connections-dev",
+            "USERS_TABLE": "realtime-code-validator-demo-users-dev",
+            "WEBSOCKET_ENDPOINT": "wss://k2p23yxaw1.execute-api.us-east-1.amazonaws.com/dev",
+            "PYTHON_VALIDATOR_FN": "realtime-code-validator-demo-dev-pythonValidate"
+          }
+        },
+        "Role": {
+          "Fn::GetAtt": [
+            "IamRoleLambdaExecution",
+            "Arn"
+          ]
+        }
+      },
+      "DependsOn": [
+        "ValidateLogGroup"
+      ]
+    },
+    "SignupLambdaFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Ref": "ServerlessDeploymentBucket"
+          },
+          "S3Key": "serverless/realtime-code-validator-demo/dev/1764529988968-2025-11-30T19:13:08.968Z/realtime-code-validator-demo.zip"
+        },
+        "Handler": "handlers/signup.handler",
+        "Runtime": "nodejs18.x",
+        "FunctionName": "realtime-code-validator-demo-dev-signup",
+        "MemorySize": 1024,
+        "Timeout": 6,
+        "Environment": {
+          "Variables": {
+            "CONNECTIONS_TABLE": "realtime-code-validator-demo-connections-dev",
+            "USERS_TABLE": "realtime-code-validator-demo-users-dev",
+            "WEBSOCKET_ENDPOINT": "wss://k2p23yxaw1.execute-api.us-east-1.amazonaws.com/dev",
+            "PYTHON_VALIDATOR_FN": "realtime-code-validator-demo-dev-pythonValidate"
+          }
+        },
+        "Role": {
+          "Fn::GetAtt": [
+            "IamRoleLambdaExecution",
+            "Arn"
+          ]
+        }
+      },
+      "DependsOn": [
+        "SignupLogGroup"
+      ]
+    },
+    "LoginLambdaFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Ref": "ServerlessDeploymentBucket"
+          },
+          "S3Key": "serverless/realtime-code-validator-demo/dev/1764529988968-2025-11-30T19:13:08.968Z/realtime-code-validator-demo.zip"
+        },
+        "Handler": "handlers/login.handler",
+        "Runtime": "nodejs18.x",
+        "FunctionName": "realtime-code-validator-demo-dev-login",
+        "MemorySize": 1024,
+        "Timeout": 6,
+        "Environment": {
+          "Variables": {
+            "CONNECTIONS_TABLE": "realtime-code-validator-demo-connections-dev",
+            "USERS_TABLE": "realtime-code-validator-demo-users-dev",
+            "WEBSOCKET_ENDPOINT": "wss://k2p23yxaw1.execute-api.us-east-1.amazonaws.com/dev",
+            "PYTHON_VALIDATOR_FN": "realtime-code-validator-demo-dev-pythonValidate"
+          }
+        },
+        "Role": {
+          "Fn::GetAtt": [
+            "IamRoleLambdaExecution",
+            "Arn"
+          ]
+        }
+      },
+      "DependsOn": [
+        "LoginLogGroup"
+      ]
+    },
+    "PythonValidateLambdaFunction": {
+      "Type": "AWS::Lambda::Function",
+      "Properties": {
+        "Code": {
+          "S3Bucket": {
+            "Ref": "ServerlessDeploymentBucket"
+          },
+          "S3Key": "serverless/realtime-code-validator-demo/dev/1764529988968-2025-11-30T19:13:08.968Z/realtime-code-validator-demo.zip"
+        },
+        "Handler": "python_validator.lambda_handler",
+        "Runtime": "python3.11",
+        "FunctionName": "realtime-code-validator-demo-dev-pythonValidate",
+        "MemorySize": 128,
+        "Timeout": 10,
+        "Environment": {
+          "Variables": {
+            "CONNECTIONS_TABLE": "realtime-code-validator-demo-connections-dev",
+            "USERS_TABLE": "realtime-code-validator-demo-users-dev",
+            "WEBSOCKET_ENDPOINT": "wss://k2p23yxaw1.execute-api.us-east-1.amazonaws.com/dev",
+            "PYTHON_VALIDATOR_FN": "realtime-code-validator-demo-dev-pythonValidate"
+          }
+        },
+        "Role": {
+          "Fn::GetAtt": [
+            "IamRoleLambdaExecution",
+            "Arn"
+          ]
+        }
+      },
+      "DependsOn": [
+        "PythonValidateLogGroup"
+      ]
+    },
+    "ConnectLambdaVersionVfRQvxcFf6KFM9R4p8OfOWEE18RwYw0BoI6vIm90": {
+      "Type": "AWS::Lambda::Version",
+      "DeletionPolicy": "Retain",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "ConnectLambdaFunction"
+        },
+        "CodeSha256": "x30khgJODqRjd/0h2rkeuKBwcnw64AhbMl7VXXSU+uY="
+      }
+    },
+    "DisconnectLambdaVersionHR9DtMs5xs4HMGeRB3IC2XhNOTN7APmx21ue26f0z4I": {
+      "Type": "AWS::Lambda::Version",
+      "DeletionPolicy": "Retain",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "DisconnectLambdaFunction"
+        },
+        "CodeSha256": "x30khgJODqRjd/0h2rkeuKBwcnw64AhbMl7VXXSU+uY="
+      }
+    },
+    "ValidateLambdaVersionYuZa1d9D7H077Yl7bR3BRT4D4YbqSLJJXtPUdY04k": {
+      "Type": "AWS::Lambda::Version",
+      "DeletionPolicy": "Retain",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "ValidateLambdaFunction"
+        },
+        "CodeSha256": "x30khgJODqRjd/0h2rkeuKBwcnw64AhbMl7VXXSU+uY="
+      }
+    },
+    "SignupLambdaVersion1nclW99Xxou21wCXd1Fbx53Hc7dir6CHudIoBvxyo": {
+      "Type": "AWS::Lambda::Version",
+      "DeletionPolicy": "Retain",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "SignupLambdaFunction"
+        },
+        "CodeSha256": "x30khgJODqRjd/0h2rkeuKBwcnw64AhbMl7VXXSU+uY="
+      }
+    },
+    "LoginLambdaVersionMfj7kFxBJv6YxwmVQpWQwzZgWCqTf6QISokommYCEc": {
+      "Type": "AWS::Lambda::Version",
+      "DeletionPolicy": "Retain",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "LoginLambdaFunction"
+        },
+        "CodeSha256": "x30khgJODqRjd/0h2rkeuKBwcnw64AhbMl7VXXSU+uY="
+      }
+    },
+    "PythonValidateLambdaVersion334Yfdk0FW6X0xke1LUIUmjOfEZMiAhXwFtY16ohk5c": {
+      "Type": "AWS::Lambda::Version",
+      "DeletionPolicy": "Retain",
+      "Properties": {
+        "FunctionName": {
+          "Ref": "PythonValidateLambdaFunction"
+        },
+        "CodeSha256": "x30khgJODqRjd/0h2rkeuKBwcnw64AhbMl7VXXSU+uY="
+      }
+    },
+    "WebsocketsApi": {
+      "Type": "AWS::ApiGatewayV2::Api",
+      "Properties": {
+        "Name": "dev-realtime-code-validator-demo-websockets",
+        "RouteSelectionExpression": "$request.body.action",
+        "Description": "Serverless Websockets",
+        "ProtocolType": "WEBSOCKET"
+      }
+    },
+    "ConnectWebsocketsIntegration": {
+      "Type": "AWS::ApiGatewayV2::Integration",
+      "Properties": {
+        "ApiId": {
+          "Ref": "WebsocketsApi"
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":apigateway:",
+              {
+                "Ref": "AWS::Region"
+              },
+              ":lambda:path/2015-03-31/functions/",
+              {
+                "Fn::GetAtt": [
+                  "ConnectLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "/invocations"
+            ]
+          ]
+        }
+      }
+    },
+    "DisconnectWebsocketsIntegration": {
+      "Type": "AWS::ApiGatewayV2::Integration",
+      "Properties": {
+        "ApiId": {
+          "Ref": "WebsocketsApi"
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":apigateway:",
+              {
+                "Ref": "AWS::Region"
+              },
+              ":lambda:path/2015-03-31/functions/",
+              {
+                "Fn::GetAtt": [
+                  "DisconnectLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "/invocations"
+            ]
+          ]
+        }
+      }
+    },
+    "ValidateWebsocketsIntegration": {
+      "Type": "AWS::ApiGatewayV2::Integration",
+      "Properties": {
+        "ApiId": {
+          "Ref": "WebsocketsApi"
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":apigateway:",
+              {
+                "Ref": "AWS::Region"
+              },
+              ":lambda:path/2015-03-31/functions/",
+              {
+                "Fn::GetAtt": [
+                  "ValidateLambdaFunction",
+                  "Arn"
+                ]
+              },
+              "/invocations"
+            ]
+          ]
+        }
+      }
+    },
+    "ConnectLambdaPermissionWebsockets": {
+      "Type": "AWS::Lambda::Permission",
+      "DependsOn": [
+        "WebsocketsApi",
+        "ConnectLambdaFunction"
+      ],
+      "Properties": {
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "ConnectLambdaFunction",
+            "Arn"
+          ]
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "apigateway.amazonaws.com"
+      }
+    },
+    "DisconnectLambdaPermissionWebsockets": {
+      "Type": "AWS::Lambda::Permission",
+      "DependsOn": [
+        "WebsocketsApi",
+        "DisconnectLambdaFunction"
+      ],
+      "Properties": {
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "DisconnectLambdaFunction",
+            "Arn"
+          ]
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "apigateway.amazonaws.com"
+      }
+    },
+    "ValidateLambdaPermissionWebsockets": {
+      "Type": "AWS::Lambda::Permission",
+      "DependsOn": [
+        "WebsocketsApi",
+        "ValidateLambdaFunction"
+      ],
+      "Properties": {
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "ValidateLambdaFunction",
+            "Arn"
+          ]
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "apigateway.amazonaws.com"
+      }
+    },
+    "SconnectWebsocketsRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "WebsocketsApi"
+        },
+        "RouteKey": "$connect",
+        "AuthorizationType": "NONE",
+        "Target": {
+          "Fn::Join": [
+            "/",
+            [
+              "integrations",
+              {
+                "Ref": "ConnectWebsocketsIntegration"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "SdisconnectWebsocketsRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "WebsocketsApi"
+        },
+        "RouteKey": "$disconnect",
+        "AuthorizationType": "NONE",
+        "Target": {
+          "Fn::Join": [
+            "/",
+            [
+              "integrations",
+              {
+                "Ref": "DisconnectWebsocketsIntegration"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "validateWebsocketsRoute": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "WebsocketsApi"
+        },
+        "RouteKey": "validate",
+        "AuthorizationType": "NONE",
+        "Target": {
+          "Fn::Join": [
+            "/",
+            [
+              "integrations",
+              {
+                "Ref": "ValidateWebsocketsIntegration"
+              }
+            ]
+          ]
+        }
+      }
+    },
+    "WebsocketsDeploymentStage": {
+      "Type": "AWS::ApiGatewayV2::Stage",
+      "Properties": {
+        "ApiId": {
+          "Ref": "WebsocketsApi"
+        },
+        "StageName": "dev",
+        "Description": "Serverless Websockets",
+        "DeploymentId": {
+          "Ref": "WebsocketsDeploymentH5H6h1k2kqKbEyFvOsNu7XofixcLOF2nJJu7R54HQ"
+        }
+      }
+    },
+    "WebsocketsDeploymentH5H6h1k2kqKbEyFvOsNu7XofixcLOF2nJJu7R54HQ": {
+      "Type": "AWS::ApiGatewayV2::Deployment",
+      "DependsOn": [
+        "SconnectWebsocketsRoute",
+        "SdisconnectWebsocketsRoute",
+        "validateWebsocketsRoute"
+      ],
+      "Properties": {
+        "ApiId": {
+          "Ref": "WebsocketsApi"
+        },
+        "Description": "Serverless Websockets"
+      }
+    },
+    "HttpApi": {
+      "Type": "AWS::ApiGatewayV2::Api",
+      "Properties": {
+        "Name": "dev-realtime-code-validator-demo",
+        "ProtocolType": "HTTP",
+        "CorsConfiguration": {
+          "AllowHeaders": [
+            "*"
+          ],
+          "AllowMethods": [
+            "*"
+          ],
+          "AllowOrigins": [
+            "*"
+          ]
+        }
+      }
+    },
+    "HttpApiStage": {
+      "Type": "AWS::ApiGatewayV2::Stage",
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApi"
+        },
+        "StageName": "$default",
+        "AutoDeploy": true,
+        "DefaultRouteSettings": {
+          "DetailedMetricsEnabled": false
+        }
+      }
+    },
+    "SignupLambdaPermissionHttpApi": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "SignupLambdaFunction",
+            "Arn"
+          ]
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:",
+              {
+                "Ref": "AWS::Region"
+              },
+              ":",
+              {
+                "Ref": "AWS::AccountId"
+              },
+              ":",
+              {
+                "Ref": "HttpApi"
+              },
+              "/*"
+            ]
+          ]
+        }
+      }
+    },
+    "HttpApiIntegrationSignup": {
+      "Type": "AWS::ApiGatewayV2::Integration",
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApi"
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::GetAtt": [
+            "SignupLambdaFunction",
+            "Arn"
+          ]
+        },
+        "PayloadFormatVersion": "2.0",
+        "TimeoutInMillis": 30000
+      }
+    },
+    "HttpApiRoutePostAuthSignup": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApi"
+        },
+        "RouteKey": "POST /auth/signup",
+        "Target": {
+          "Fn::Join": [
+            "/",
+            [
+              "integrations",
+              {
+                "Ref": "HttpApiIntegrationSignup"
+              }
+            ]
+          ]
+        }
+      },
+      "DependsOn": "HttpApiIntegrationSignup"
+    },
+    "LoginLambdaPermissionHttpApi": {
+      "Type": "AWS::Lambda::Permission",
+      "Properties": {
+        "FunctionName": {
+          "Fn::GetAtt": [
+            "LoginLambdaFunction",
+            "Arn"
+          ]
+        },
+        "Action": "lambda:InvokeFunction",
+        "Principal": "apigateway.amazonaws.com",
+        "SourceArn": {
+          "Fn::Join": [
+            "",
+            [
+              "arn:",
+              {
+                "Ref": "AWS::Partition"
+              },
+              ":execute-api:",
+              {
+                "Ref": "AWS::Region"
+              },
+              ":",
+              {
+                "Ref": "AWS::AccountId"
+              },
+              ":",
+              {
+                "Ref": "HttpApi"
+              },
+              "/*"
+            ]
+          ]
+        }
+      }
+    },
+    "HttpApiIntegrationLogin": {
+      "Type": "AWS::ApiGatewayV2::Integration",
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApi"
+        },
+        "IntegrationType": "AWS_PROXY",
+        "IntegrationUri": {
+          "Fn::GetAtt": [
+            "LoginLambdaFunction",
+            "Arn"
+          ]
+        },
+        "PayloadFormatVersion": "2.0",
+        "TimeoutInMillis": 30000
+      }
+    },
+    "HttpApiRoutePostAuthLogin": {
+      "Type": "AWS::ApiGatewayV2::Route",
+      "Properties": {
+        "ApiId": {
+          "Ref": "HttpApi"
+        },
+        "RouteKey": "POST /auth/login",
+        "Target": {
+          "Fn::Join": [
+            "/",
+            [
+              "integrations",
+              {
+                "Ref": "HttpApiIntegrationLogin"
+              }
+            ]
+          ]
+        }
+      },
+      "DependsOn": "HttpApiIntegrationLogin"
+    },
+    "ConnectionsTable": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "TableName": "realtime-code-validator-demo-connections-dev",
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "connectionId",
+            "AttributeType": "S"
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "connectionId",
+            "KeyType": "HASH"
+          }
+        ],
+        "BillingMode": "PAY_PER_REQUEST"
+      }
+    },
+    "UsersTable": {
+      "Type": "AWS::DynamoDB::Table",
+      "Properties": {
+        "TableName": "realtime-code-validator-demo-users-dev",
+        "AttributeDefinitions": [
+          {
+            "AttributeName": "email",
+            "AttributeType": "S"
+          }
+        ],
+        "KeySchema": [
+          {
+            "AttributeName": "email",
+            "KeyType": "HASH"
+          }
+        ],
+        "BillingMode": "PAY_PER_REQUEST"
+      }
+    }
+  },
+  "Outputs": {
+    "ServerlessDeploymentBucketName": {
+      "Value": {
+        "Ref": "ServerlessDeploymentBucket"
+      },
+      "Export": {
+        "Name": "sls-realtime-code-validator-demo-dev-ServerlessDeploymentBucketName"
+      }
+    },
+    "ConnectLambdaFunctionQualifiedArn": {
+      "Description": "Current Lambda function version",
+      "Value": {
+        "Ref": "ConnectLambdaVersionVfRQvxcFf6KFM9R4p8OfOWEE18RwYw0BoI6vIm90"
+      },
+      "Export": {
+        "Name": "sls-realtime-code-validator-demo-dev-ConnectLambdaFunctionQualifiedArn"
+      }
+    },
+    "DisconnectLambdaFunctionQualifiedArn": {
+      "Description": "Current Lambda function version",
+      "Value": {
+        "Ref": "DisconnectLambdaVersionHR9DtMs5xs4HMGeRB3IC2XhNOTN7APmx21ue26f0z4I"
+      },
+      "Export": {
+        "Name": "sls-realtime-code-validator-demo-dev-DisconnectLambdaFunctionQualifiedArn"
+      }
+    },
+    "ValidateLambdaFunctionQualifiedArn": {
+      "Description": "Current Lambda function version",
+      "Value": {
+        "Ref": "ValidateLambdaVersionYuZa1d9D7H077Yl7bR3BRT4D4YbqSLJJXtPUdY04k"
+      },
+      "Export": {
+        "Name": "sls-realtime-code-validator-demo-dev-ValidateLambdaFunctionQualifiedArn"
+      }
+    },
+    "SignupLambdaFunctionQualifiedArn": {
+      "Description": "Current Lambda function version",
+      "Value": {
+        "Ref": "SignupLambdaVersion1nclW99Xxou21wCXd1Fbx53Hc7dir6CHudIoBvxyo"
+      },
+      "Export": {
+        "Name": "sls-realtime-code-validator-demo-dev-SignupLambdaFunctionQualifiedArn"
+      }
+    },
+    "LoginLambdaFunctionQualifiedArn": {
+      "Description": "Current Lambda function version",
+      "Value": {
+        "Ref": "LoginLambdaVersionMfj7kFxBJv6YxwmVQpWQwzZgWCqTf6QISokommYCEc"
+      },
+      "Export": {
+        "Name": "sls-realtime-code-validator-demo-dev-LoginLambdaFunctionQualifiedArn"
+      }
+    },
+    "PythonValidateLambdaFunctionQualifiedArn": {
+      "Description": "Current Lambda function version",
+      "Value": {
+        "Ref": "PythonValidateLambdaVersion334Yfdk0FW6X0xke1LUIUmjOfEZMiAhXwFtY16ohk5c"
+      },
+      "Export": {
+        "Name": "sls-realtime-code-validator-demo-dev-PythonValidateLambdaFunctionQualifiedArn"
+      }
+    },
+    "ServiceEndpointWebsocket": {
+      "Description": "URL of the service endpoint",
+      "Value": {
+        "Fn::Join": [
+          "",
+          [
+            "wss://",
+            {
+              "Ref": "WebsocketsApi"
+            },
+            ".execute-api.",
+            {
+              "Ref": "AWS::Region"
+            },
+            ".",
+            {
+              "Ref": "AWS::URLSuffix"
+            },
+            "/dev"
+          ]
+        ]
+      },
+      "Export": {
+        "Name": "sls-realtime-code-validator-demo-dev-ServiceEndpointWebsocket"
+      }
+    },
+    "HttpApiId": {
+      "Description": "Id of the HTTP API",
+      "Value": {
+        "Ref": "HttpApi"
+      },
+      "Export": {
+        "Name": "sls-realtime-code-validator-demo-dev-HttpApiId"
+      }
+    },
+    "HttpApiUrl": {
+      "Description": "URL of the HTTP API",
+      "Value": {
+        "Fn::Join": [
+          "",
+          [
+            "https://",
+            {
+              "Ref": "HttpApi"
+            },
+            ".execute-api.",
+            {
+              "Ref": "AWS::Region"
+            },
+            ".",
+            {
+              "Ref": "AWS::URLSuffix"
+            }
+          ]
+        ]
+      },
+      "Export": {
+        "Name": "sls-realtime-code-validator-demo-dev-HttpApiUrl"
+      }
+    }
+  }
+}
