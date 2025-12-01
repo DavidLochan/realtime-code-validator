@@ -5,7 +5,7 @@
     "scripts": {
         "deploy": "serverless deploy --stage dev",
         "remove": "serverless remove --stage dev",
-        "test": "echo \"No backend tests yet\""
+        "test":  "node test.js"
     },
     "dependencies": {
         "acorn": "^8.15.0",
