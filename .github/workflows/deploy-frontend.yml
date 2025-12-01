@@ -12,10 +12,10 @@ jobs:
   deploy-frontend:
     runs-on: ubuntu-latest
 
-    # All commands run inside the frontend folder
-    defaults:
-      run:
-        working-directory: frontend
+    env:
+      AWS_REGION: ${{ secrets.AWS_REGION }}
+      S3_BUCKET: ${{ secrets.S3_BUCKET }}
+      CLOUDFRONT_DISTRIBUTION_ID: ${{ secrets.CLOUDFRONT_DISTRIBUTION_ID }}
 
     steps:
       - name: Checkout code
